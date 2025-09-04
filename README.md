@@ -19,3 +19,4 @@ CTRL + Z in the terminal to exit
 - background replacement for invisibility effect
 
 front-end UI coming soon!
+note: running this program will access your webcam
