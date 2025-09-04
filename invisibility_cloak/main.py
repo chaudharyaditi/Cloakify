@@ -39,6 +39,9 @@ def main():
     print("[INFO] Capturing background, please step out of the frame...")
     for i in range(60):
         ret, background = cap.read()
+        if not ret:
+            continue
+
     background = np.flip(background, axis=1)  # Flip horizontally
 
     print("[INFO] Starting cloak detection. Press 'q' to exit.")
