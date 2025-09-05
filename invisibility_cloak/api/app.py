@@ -1,17 +1,19 @@
 from flask import Flask, render_template, request, jsonify
 import json
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
+
+COLOR_FILE = "color.json"
 
 def get_color():
-    try:
-        with open("color.json") as f:
+    if os.path.exists(COLOR_FILE):
+        with open(COLOR_FILE) as f:
             return json.load(f).get("color", "red")
-    except FileNotFoundError:
-        return "red"
+    return "red"
 
 def set_color(color):
-    with open("color.json", "w") as f:
+    with open(COLOR_FILE, "w") as f:
         json.dump({"color": color}, f)
 
 @app.route("/", methods=["GET"])
@@ -25,5 +27,4 @@ def set_cloak_color():
     set_color(color)
     return jsonify({"status": "ok", "color": color})
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# Vercel expects app callable named `app`
