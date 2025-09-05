@@ -5,7 +5,7 @@ a python + opencv project that makes a red or blue cloak disappear in real time 
 1. clone this repo and open the folder in your terminal or VS code.  
 2. install the required dependencies:  
    ```bash
-   pip install opencv-python numpy
+   pip install flask opencv-python numpy
    ```
 ### usage
 1. choose which cloak you're using.
