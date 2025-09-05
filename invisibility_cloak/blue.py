@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import time
 
-# Start video capture
 cap = cv2.VideoCapture(0)  # 0 = default webcam
 
 # Give the camera time to warm up

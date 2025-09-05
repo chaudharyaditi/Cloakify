@@ -1,89 +1,64 @@
+
 import cv2
 import numpy as np
-import json
+import time
 
-# Default cloak color
-selected_color = "red"
+cap = cv2.VideoCapture(0)  # 0 = default webcam
 
-# Define HSV ranges for colors
-color_ranges = {
-    "red": [
-        (np.array([0, 120, 70]), np.array([10, 255, 255])),
-        (np.array([170, 120, 70]), np.array([180, 255, 255]))
-    ],
-    "blue": [
-        (np.array([94, 80, 2]), np.array([126, 255, 255]))
-    ],
-    "green": [
-        (np.array([40, 40, 40]), np.array([70, 255, 255]))
-    ]
-}
+# Give the camera time to warm up
+time.sleep(3)
 
-def get_selected_color():
-    """Read the currently selected cloak color from color.json."""
-    try:
-        with open("color.json") as f:
-            color = json.load(f).get("color", "red")
-            print("[INFO] Current color:", color)
-    except FileNotFoundError:
-        color = "red"
-    return color
+# Capture the background (you should move away during this time)
+print("Capturing background... Please step out of the frame.")
+for i in range(60):
+    ret, background = cap.read()
 
-def main():
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("[ERROR] Cannot open camera")
-        return
+background = np.flip(background, axis=1)  # flip background
 
-    # Capture background for initial frames
-    print("[INFO] Capturing background, please step out of the frame...")
-    for i in range(60):
-        ret, background = cap.read()
-        if not ret:
-            continue
+print("Background captured. Move into the frame with your red cloak!")
 
-    background = np.flip(background, axis=1)  # Flip horizontally
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-    print("[INFO] Starting cloak detection. Press 'q' to exit.")
+    # Flip frame
+    frame = np.flip(frame, axis=1)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    # Convert frame from BGR to HSV color space
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        frame = np.flip(frame, axis=1)
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    # Define red color range in HSV (two ranges because red wraps around HSV)
+    lower_red1 = np.array([0, 120, 70])
+    upper_red1 = np.array([10, 255, 255])
+    lower_red2 = np.array([170, 120, 70])
+    upper_red2 = np.array([180, 255, 255])
 
-        # Update cloak color from Flask selection
-        selected_color = get_selected_color()
+    # Create masks for red
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    mask = mask1 + mask2
 
-        # Create mask for selected color
-        mask = None
-        for lower, upper in color_ranges[selected_color]:
-            new_mask = cv2.inRange(hsv, lower, upper)
-            mask = new_mask if mask is None else mask | new_mask
+    # Clean the mask (remove noise)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
+    mask = cv2.dilate(mask, np.ones((3,3), np.uint8))
 
-        # Refine mask
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-        mask = cv2.dilate(mask, np.ones((3, 3), np.uint8))
+    # Invert mask (everything that is not red)
+    mask_inv = cv2.bitwise_not(mask)
 
-        # Invert mask
-        mask_inv = cv2.bitwise_not(mask)
+    # Segment out non-red parts from the frame
+    res1 = cv2.bitwise_and(frame, frame, mask=mask_inv)
 
-        # Segment out cloak and background
-        res1 = cv2.bitwise_and(background, background, mask=mask)
-        res2 = cv2.bitwise_and(frame, frame, mask=mask_inv)
-        final_output = cv2.addWeighted(res1, 1, res2, 1, 0)
+    # Segment out red parts from the background
+    res2 = cv2.bitwise_and(background, background, mask=mask)
 
-        # Show the output
-        cv2.imshow("Invisibility Cloak", final_output)
+    # Combine the two to create the effect
+    final_output = cv2.addWeighted(res1, 1, res2, 1, 0)
 
-        # Exit on 'q'
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    cv2.imshow("Invisibility Cloak", final_output)
 
-    cap.release()
-    cv2.destroyAllWindows()
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-if __name__ == "__main__":
-    main()
+cap.release()
+cv2.destroyAllWindows()
